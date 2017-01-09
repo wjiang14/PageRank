@@ -10,6 +10,13 @@ public class Driver {
         //args1: dir of PageRank.txt
         //args2: dir of unitMultiplication result
         //args3: times of convergence
+        //run MR1, MR2
+        //iteration
+        //MR1: transition.txt pr.txt -> multiplication.txt
+        //MR2: multiplication.txt -> pr1.txt
+        //MR1: transition.txt pr1.txt -> mutiplication1.txt
+        //MR2: multiplication.txt -> pr2.txt
+        //hadoop jar mr.jar /int /out....
         String transitionMatrix = args[0];
         String prMatrix = args[1];
         String unitState = args[2];

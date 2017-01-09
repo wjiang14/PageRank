@@ -22,6 +22,24 @@ public class UnitMultiplication {
 
             //input format: fromPage\t toPage1,toPage2,toPage3
             //target: build transition matrix unit -> fromPage\t toPage=probability
+            // 1\t 2, 8, 9, 24 eg.
+            // key = 1
+            // value = to = prob
+
+            String line = value.toString().trim();
+            String[] fromTo = line.split("\t");
+
+            //1 empty
+            if (fromTo.length == 1 || fromTo[1].trim().equals("")) {
+                return;
+            }
+            String from = fromTo[0];
+            String[] tos = fromTo[1].split(",");
+            for (String cur: tos) {
+                // probability: 1/lenth
+                // output form: 1 2=1/4,7=1/4,8=1/4,9=1/4
+                context.write(new Text(from), new Text(cur + "=" + (double)1/tos.length));
+            }
         }
     }
 
@@ -32,6 +50,8 @@ public class UnitMultiplication {
 
             //input format: Page\t PageRank
             //target: write to reducer
+            String[] pr = value.toString().split("\t");
+            context.write(new Text(pr[0]), new Text(pr[1]));
         }
     }
 
@@ -43,7 +63,27 @@ public class UnitMultiplication {
                 throws IOException, InterruptedException {
 
             //input key = fromPage value=<toPage=probability..., pageRank>
+            //separate transition cell from pr cell
             //target: get the unit multiplication
+
+            List<String> transitionUnit = new ArrayList<String>();
+            double prUnit = 0;
+            for (Text value: values) {
+                if (value.toString().contains("=")) {
+                    transitionUnit.add(value.toString());
+                }
+                else {
+                    prUnit = Double.parseDouble(value.toString().trim());
+                }
+            }
+
+            //<2=1/4, 7=1/4...> pr = 1/6000
+            for (String unit: transitionUnit) {
+                String outputKey = unit.split("=")[0];
+                double relation = Double.parseDouble(unit.split("=")[1]);
+                String outputValue = String.valueOf(relation * prUnit);
+                context.write(new Text(outputKey), new Text(outputValue));
+            }
         }
     }
 
@@ -53,13 +93,17 @@ public class UnitMultiplication {
         Job job = Job.getInstance(conf);
         job.setJarByClass(UnitMultiplication.class);
 
-        //how chain two mapper classes?
+        // chain two mapper classes
+        ChainMapper.addMapper(job, TransitionMapper.class, Object.class, Text.class, Text.class, Text.class, conf);
+        ChainMapper.addMapper(job, PRMapper.class, Object.class, Text.class, Text.class, Text.class, conf);
 
         job.setReducerClass(MultiplicationReducer.class);
 
         job.setOutputKeyClass(Text.class);
         job.setOutputValueClass(Text.class);
 
+        //args[0] = relation.txt
+        //args[1] = pr.txt
         MultipleInputs.addInputPath(job, new Path(args[0]), TextInputFormat.class, TransitionMapper.class);
         MultipleInputs.addInputPath(job, new Path(args[1]), TextInputFormat.class, PRMapper.class);
 
